@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Create release assets
+        run: |
+          mkdir -p dist-release
+          cp -r dist dist-release/dist
+          cp package.json README.md LICENSE CHANGELOG.md install.sh dist-release/
+          cd dist-release
+          tar czf ../zc-code-${{ github.ref_name }}-linux-arm64.tar.gz *
+          cd ..
+          sha256sum zc-code-${{ github.ref_name }}-linux-arm64.tar.gz > zc-code-${{ github.ref_name }}-linux-arm64.tar.gz.sha256
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            zc-code-*.tar.gz
+            zc-code-*.tar.gz.sha256
+          generate_release_notes: true

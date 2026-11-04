@@ -1,0 +1,39 @@
+# ZC CODE
+node_modules/
+dist/
+dist-esm/
+.build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets (never commit)
+.env
+.env.local
+.env.*.local
+config.secret.json
+auth/
+secrets/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Misc
+.turbo/
