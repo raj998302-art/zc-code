@@ -168,6 +168,7 @@ Then run the installer above.
 - `docs/SKILLS.md` — skills system
 - `docs/CONFIGURATION.md` — configuration reference
 - `docs/SECURITY.md` — security design
+- `docs/TROUBLESHOOTING.md` — troubleshooting
 
 ## Contributing
 

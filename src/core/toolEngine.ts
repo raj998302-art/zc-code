@@ -26,8 +26,11 @@ export interface ToolResult {
   tokens?: number;
 }
 
+export type PermissionLevel = "ALLOW" | "ASK" | "DENY";
+
 export interface PermissionDecision {
-  level: "ALLOW" | "ASK" | "DENY";
+  level: PermissionLevel;
+  source?: "agent" | "project" | "global" | "default";
   reason?: string;
 }
 
@@ -62,13 +65,14 @@ export class ToolEngine {
     return [...this.tools.keys()].sort();
   }
 
-  resolvePermission(toolName: string, agentPermissions?: Record<string, string>): PermissionDecision {
-    // Priority: agent > project > global
+  resolvePermission(toolName: string, permission: string, agentPermissions?: Record<string, string>): PermissionDecision {
+    // Agent override (keyed by tool name)
     const agentLevel = agentPermissions?.[toolName];
-    if (agentLevel) return { level: agentLevel as any };
-    const globalLevel = this.globalPermissions[toolName];
-    if (globalLevel) return { level: globalLevel as any };
-    return { level: "ASK", reason: "no explicit permission; defaulting to ASK" };
+    if (agentLevel) return { level: agentLevel as any, source: "agent", reason: "agent-level permission" };
+    // Global default (keyed by permission category, e.g. "readFile", "writeFile")
+    const globalLevel = this.globalPermissions[permission];
+    if (globalLevel) return { level: globalLevel as any, source: "global", reason: "global permission" };
+    return { level: defaultFor(permission), source: "default", reason: `default for ${permission}` };
   }
 
   async execute(
@@ -91,7 +95,7 @@ export class ToolEngine {
     }
 
     // Permission check
-    const decision = this.resolvePermission(name);
+    const decision = this.resolvePermission(name, tool.permission);
     if (decision.level === "DENY") {
       const res: ToolResult = { ok: false, error: `Permission DENIED for tool "${name}"` };
       this.logAudit(name, "DENY", args, res.error, ctx.sessionId, ctx.agentId);
@@ -163,3 +167,16 @@ export class ToolEngine {
 }
 
 export const toolEngine = new ToolEngine();
+
+function defaultFor(permission: string): PermissionLevel {
+  const readTools = ["readFile", "listDirectory", "searchFiles", "git_status", "git_diff", "git_log", "git_branch"];
+  const writeTools = ["writeFile", "editFile", "apply_patch", "replace_text"];
+  if (readTools.includes(permission)) return "ALLOW";
+  if (writeTools.includes(permission)) return "ASK";
+  if (permission === "deleteFile") return "ASK";
+  if (permission === "executeCommand" || permission === "executeScript") return "ASK";
+  if (permission === "gitCheckout" || permission === "gitCommit" || permission === "gitPush") return "ASK";
+  if (permission === "installDependencies" || permission === "networkAccess") return "ASK";
+  if (permission === "externalDirectory") return "DENY";
+  return "ASK";
+}
